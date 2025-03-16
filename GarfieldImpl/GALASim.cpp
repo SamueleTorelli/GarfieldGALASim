@@ -15,6 +15,8 @@
 #include <Garfield/ComponentUser.hh>
 #include <Garfield/AvalancheMicroscopic.hh>
 #include <Garfield/ComponentGrid.hh>
+#include "Garfield/Random.hh"
+#include "Garfield/RandomEngineRoot.hh"
 
 #include "TApplication.h"
 #include "TPolyLine3D.h"
@@ -118,18 +120,15 @@ int main() {
   std::cout << "Teflon box: (" << xmin << ", " << ymin << ", " << zmin << ") to ("
 	    << xmax << ", " << ymax << ", " << zmax << ")\n";
   std::cout << "Hole radius: " << hole_rad << ", Pitch: " << pitch << "\n";
-  
-  // Create the Teflon box
+
+      // Create the Teflon box
   double teflonCenterX = (xmin + xmax) / 2;
   double teflonCenterY = (ymin + ymax) / 2;
   double teflonCenterZ = (zmin + zmax) / 2;
   double teflonSizeX = (xmax - xmin) / 2;
   double teflonSizeY = (ymax - ymin) / 2;
   double teflonSizeZ = (zmax - zmin) / 2;
-
-  auto teflonBox = new Garfield::SolidBox(teflonCenterX, teflonCenterY, teflonCenterZ, teflonSizeX, teflonSizeY, teflonSizeZ+0.1);
-  geometry.AddSolid(teflonBox, &teflon);
-
+  
   // Create 9 cylindrical holes in the Teflon box
   std::vector<std::pair<double, double>> holePositions = {
     {0.0, 0.0},          // Center
@@ -149,11 +148,14 @@ int main() {
     double z = teflonCenterZ; // Center of the hole in z
     double height = zmax - zmin; // Height of the hole
 
-    auto hole = new Garfield::SolidTube(x, y, z, hole_rad, height/2);
+    auto hole = new Garfield::SolidTube(x, y, z, hole_rad, height/2+0.02);
     geometry.AddSolid(hole, &gas); // Assign gas medium to the hole
   }
 
-  // Create the gas box
+  auto teflonBox = new Garfield::SolidBox(teflonCenterX, teflonCenterY, teflonCenterZ, teflonSizeX, teflonSizeY, teflonSizeZ+0.01);
+  geometry.AddSolid(teflonBox, &teflon);
+  
+      // Create the gas box
   double gasCenterX = (xminw + xmaxw) / 2;
   double gasCenterY = (yminw + ymaxw) / 2;
   double gasCenterZ = (zminw + zmaxw) / 2;
@@ -163,7 +165,7 @@ int main() {
   
   auto gasBox = new Garfield::SolidBox(gasCenterX, gasCenterY, gasCenterZ, gasSizeX, gasSizeY, gasSizeZ);
   geometry.AddSolid(gasBox, &gas);
-
+  
   // Print success message
   std::cout << "Geometry created successfully!" << std::endl;
   
@@ -171,14 +173,17 @@ int main() {
   ComponentGrid* field = new ComponentGrid();
   field->LoadElectricField("/Users/samuele/Documents/Postdoc/GALA/EFSimulation/OutFileField/EFieldFile_4mesh.txt", "XYZ", false, false);
   field->SetGeometry(&geometry);
-  //field->SetMedium(&gas);
-  
+  field->EnableCustomMediumReturn();
+  field->Print();
+  field->SetMedium(&gas);
+
   // Create a sensor and associate the field component
   Sensor sensor;
   sensor.AddComponent(field);
+  sensor.EnableDebugging();
   // Set the sensor region to the amplification volume
-  sensor.SetArea(-0.3, -0.3, -0.3,
-		  0.3, 0.3, 0.5);
+  sensor.SetArea(-0.4, -0.4, -0.3,
+		  0.4, 0.4, 0.5);
 
   new TCanvas();
   TH2D* h = new TH2D("EF","EF",int((xmaxw-xminw)/0.01),xminw,xmaxw,int((zmaxw-zminw)/0.01),zminw,zmaxw);
@@ -186,24 +191,26 @@ int main() {
   for(double x =  xminw+0.01; x <xmaxw-0.01; x += 0.001){
     for (double z = zminw; z <zmaxw; z += 0.001) {
       double ex, ey, ez;
-
+      
       ex = field->ElectricField(x, 0.0, z)[0];
       ey = field->ElectricField(x, 0.0, z)[1];
       ez = field->ElectricField(x, 0.0, z)[2];
-
-      Medium* m = field->GetMedium(x, 0, z);
-      if (!m) {
-	std::cout << "Warning: Electron is in an undefined region!" << std::endl;
-      } else {
-	std::cout << "Warning: Medium driftable? " << m->IsDriftable() << std::endl;
-      }
       
       double magn = sqrt(ex*ex+ey*ey+ez*ez);
-      if(z>0.2 && z<0.4 && magn < 1) std::cout <<"Magn 0 at (x,z) = " << x << " " << z << std::endl;
+      //if(z>0.2 && z<0.4 && magn < 1) std::cout <<"Magn 0 at (x,z) = " << x << " " << z << std::endl;
       h->SetBinContent(h->GetXaxis()->FindBin(x),h->GetYaxis()->FindBin(z),magn);
     }
   }
 
+  for (double z = zminw; z <zmaxw; z += 0.001) {
+    Medium* m = sensor.GetMedium(-0.25, 0, z);
+    if (!m) {
+      std::cout << "Warning: Electron is in an undefined region!" << std::endl;
+    } else {
+      std::cout << "Warning: Medium driftable? " << m->GetName() << " " << m->IsDriftable() << std::endl;
+    } 
+  }
+  
   h->Draw("COLZ");
   
   // Create an avalanche microscopic object for electron tracking
@@ -211,7 +218,7 @@ int main() {
   avalanche.SetSensor(&sensor); // Associate the avalanche with the sensor
   //Enable debugging output
   //avalanche.EnableDebugging();
-  //avalanche.EnableRKNSteps(true);
+  avalanche.EnableRKNSteps(false);
 
   avalanche.SetRKNTolerance(1e-5,1e-2);
   //avalanche.SetUserHandleStep(userHandleStep);
@@ -223,17 +230,17 @@ int main() {
   avalanche.SetElectronTransportCut(0.00001);
   avalanche.SetUserHandleInelastic(userTracking);
 
-  bool debug = true;
+  bool debug = false;
   
   if(!debug){
     openFile();
     
     std::cout << "Drifting medium: "<< gas.IsDriftable() << " " << teflon.IsDriftable() << "\n"; 
     
-    for(int i=0;i<1;i++){
+    for(int i=0; i<10; i++){
       // Set the initial position of the electron (in cm)
-      double x0 = rand()/(double)RAND_MAX*0.3-0.15;
-      double y0 = rand()/(double)RAND_MAX*0.3-0.15;
+      double x0 = rand()/(double)RAND_MAX*0.4-0.2;
+      double y0 = rand()/(double)RAND_MAX*0.4-0.2;
       double z0 = -0.25; // Start at the bottom of the volume
       std::cout << i <<" e- starting at " << x0 << " " << y0 << " " << z0 << std::endl;
       double t0 = 0.0; // Initial time (in ns)
@@ -250,13 +257,11 @@ int main() {
   }
   viewDrift.Plot();
 
-  // Visualize the electron's path
-    
   // Visualize the geometry
   ViewGeometry view;
   view.SetGeometry(&geometry);
   view.Plot();
-  
+    
   app.Run();
   return 0;
 }
