@@ -1,0 +1,6 @@
+#xminw yminw zminw xmaxw ymaxw zmaxw
+-0.9 -0.9 -0.9 0.89 0.89 0.89
+#xmin ymin zmin xmax ymax zmax
+-0.9 -0.9 -0.14 0.89 0.89 0.35
+#hole_rad pitch
+0.13 0.5

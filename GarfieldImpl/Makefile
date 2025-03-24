@@ -6,19 +6,24 @@ GARFIELD_INCLUDE = -I$(GARFIELD_HOME)/install/include/
 GARFIELD_LIBS = -L$(GARFIELD_HOME)/install/lib/ -lGarfield
 ROOT_FLAGS = $(shell root-config --cflags --glibs)
 
-# Source file
-SRC = GALASim.cpp
+# Source files and output executables
+SRC1 = GALASim.cpp
+SRC2 = GALASim_clu.cpp
+TARGET1 = GalaSim
+TARGET2 = GALASim_clu
 
-# Output executable
-TARGET = GALASim
+# Compilation rules
+all: $(TARGET1) $(TARGET2)
 
-# Compilation rule
-$(TARGET): $(SRC)
-	$(CXX) -o $(TARGET) $(SRC) $(GARFIELD_INCLUDE) $(GARFIELD_LIBS) $(ROOT_FLAGS)
+$(TARGET1): $(SRC1)
+	$(CXX) -o $(TARGET1) $(SRC1) $(GARFIELD_INCLUDE) $(GARFIELD_LIBS) $(ROOT_FLAGS)
+
+$(TARGET2): $(SRC2)
+	$(CXX) -o $(TARGET2) $(SRC2) $(GARFIELD_INCLUDE) $(GARFIELD_LIBS) $(ROOT_FLAGS)
 
 # Clean rule
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET1) $(TARGET2)
 
 # Phony targets
-.PHONY: clean
+.PHONY: all clean

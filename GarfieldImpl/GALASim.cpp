@@ -69,7 +69,7 @@ void userTracking(double x, double y, double z, double t,
 int main() {
 
   TApplication app("app", nullptr, nullptr);
-    
+
   MediumMagboltz gas;
   gas.LoadGasFile("/Users/samuele/Documents/Postdoc/GALA/GarfieldGALADSim/GasFile/gases/xe_5bar.gas");
   gas.SetTemperature(293.15); // 20°C
@@ -202,6 +202,7 @@ int main() {
     }
   }
 
+  /*
   for (double z = zminw; z <zmaxw; z += 0.001) {
     Medium* m = sensor.GetMedium(-0.25, 0, z);
     if (!m) {
@@ -209,7 +210,7 @@ int main() {
     } else {
       std::cout << "Warning: Medium driftable? " << m->GetName() << " " << m->IsDriftable() << std::endl;
     } 
-  }
+    }*/
   
   h->Draw("COLZ");
   
@@ -220,14 +221,14 @@ int main() {
   //avalanche.EnableDebugging();
   avalanche.EnableRKNSteps(false);
 
-  avalanche.SetRKNTolerance(1e-5,1e-2);
+  avalanche.SetRKNTolerance(1e-3,1e-1);
   //avalanche.SetUserHandleStep(userHandleStep);
   // Set up visualization of the electron drift
 
   ViewDrift viewDrift;
   avalanche.EnablePlotting(&viewDrift);
   avalanche.EnableExcitationMarkers(true);
-  avalanche.SetElectronTransportCut(0.00001);
+  avalanche.SetElectronTransportCut(0.000001);
   avalanche.SetUserHandleInelastic(userTracking);
 
   bool debug = false;
@@ -239,8 +240,8 @@ int main() {
     
     for(int i=0; i<10; i++){
       // Set the initial position of the electron (in cm)
-      double x0 = rand()/(double)RAND_MAX*0.4-0.2;
-      double y0 = rand()/(double)RAND_MAX*0.4-0.2;
+      double x0 = rand()/(double)RAND_MAX*0.5-0.25;
+      double y0 = rand()/(double)RAND_MAX*0.5-0.25;
       double z0 = -0.25; // Start at the bottom of the volume
       std::cout << i <<" e- starting at " << x0 << " " << y0 << " " << z0 << std::endl;
       double t0 = 0.0; // Initial time (in ns)
