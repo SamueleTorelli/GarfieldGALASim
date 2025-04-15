@@ -11,7 +11,7 @@
 
 using namespace Garfield;
 
-void AnalyseAval(AvalancheMicroscopic aval,ComponentGrid* field){
+void AnalyseAval(int ev,AvalancheMicroscopic aval,ComponentGrid* field){
   
   const int np = aval.GetNumberOfElectronEndpoints();
   
@@ -25,7 +25,7 @@ void AnalyseAval(AvalancheMicroscopic aval,ComponentGrid* field){
       int status;
       aval.GetElectronEndpoint(ie, x1, y1, z1, t1, e1, x2, y2, z2, t2, e2, status);
       
-      std::cout << "Electron" << ie <<" ends at (x, y, z) = ("
+      std::cout << "Electron" << ev <<" ends at (x, y, z) = ("
 		<< x2 << ", " << y2 << ", " << z2
 		<< ") with an energy of " << e2 << " eV.\n"
 		<< "Status: " << status << "\n";

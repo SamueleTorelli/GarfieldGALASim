@@ -9,11 +9,13 @@ ROOT_FLAGS = $(shell root-config --cflags --glibs)
 # Source files and output executables
 SRC1 = GALASim.cpp
 SRC2 = GALASim_clu.cpp
-TARGET1 = GalaSim
+SRC3 = GALASim1x1.cpp
+TARGET1 = GALASim
 TARGET2 = GALASim_clu
+TARGET3 = GALASim1x1
 
 # Compilation rules
-all: $(TARGET1) $(TARGET2)
+all: $(TARGET1) $(TARGET2) $(TARGET3)
 
 $(TARGET1): $(SRC1)
 	$(CXX) -o $(TARGET1) $(SRC1) $(GARFIELD_INCLUDE) $(GARFIELD_LIBS) $(ROOT_FLAGS)
@@ -21,9 +23,12 @@ $(TARGET1): $(SRC1)
 $(TARGET2): $(SRC2)
 	$(CXX) -o $(TARGET2) $(SRC2) $(GARFIELD_INCLUDE) $(GARFIELD_LIBS) $(ROOT_FLAGS)
 
+$(TARGET3): $(SRC3)
+	$(CXX) -o $(TARGET3) $(SRC3) $(GARFIELD_INCLUDE) $(GARFIELD_LIBS) $(ROOT_FLAGS)
+
 # Clean rule
 clean:
-	rm -f $(TARGET1) $(TARGET2)
+	rm -f $(TARGET1) $(TARGET2) $(TARGET3)
 
 # Phony targets
 .PHONY: all clean

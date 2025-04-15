@@ -2,6 +2,7 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
+
 #include <TCanvas.h>
 #include <TH3F.h>
 #include <TH2F.h>
@@ -13,7 +14,7 @@
 using namespace std;
 
 // Simulation parameters
-const int nx = 280, ny = 280, nz = 180;  // Grid size
+const int nx = 700, ny = 700, nz = 1000;  // Grid size
 const double V1 = -11000.0, V2 = -100.0;    // Plate potentials
 const double epsilon_teflon = 2.1;    // Relative permittivity
 const double epsilon_copper = 10;
@@ -22,25 +23,21 @@ const int max_iterations = 15000;
 const double tolerance = 1e-4;
 
 // 3D arrays for potential and permittivity
-double V[nx][ny][nz]; 
-double epsilon[nx][ny][nz]; 
-double Ex[nx][ny][nz];
-double Ey[nx][ny][nz];
-double Ez[nx][ny][nz];
+// Define 3D vectors for V and epsilon
+std::vector<std::vector<std::vector<double>>> V(nx, 
+    std::vector<std::vector<double>>(ny, 
+    std::vector<double>(nz, 0.0)));
 
+std::vector<std::vector<std::vector<double>>> epsilon(nx, 
+    std::vector<std::vector<double>>(ny, 
+    std::vector<double>(nz, 1.0))); // Default value for epsilon (e.g., 1.0)
 
-double grid_spacing = 0.1; // [mm/bin]
+double grid_spacing = 0.025; // [mm/bin]
 
-int Plate1Position = 75; // 0->Plate1Position
-int TeflonLayerThick = 50; // center-TeflonLayerThick/2 -> center+TeflonLayerThick/2
-int hole_radius = 13;
-int hole_pitch = 50;
-
-int ring1 = 25;
-int ring2 = 50;
-
-int ring_thz = 3;
-int ting_thxy = 5;
+int Plate1Position = 400; // 0->Plate1Position
+int TeflonLayerThick = 200; // center-TeflonLayerThick/2 -> center+TeflonLayerThick/2
+int hole_radius = 100;
+int hole_pitch = 200;
 
 int Plate2Position = Plate1Position+TeflonLayerThick+1; //center+TeflonLayerThick/2 
 
@@ -54,14 +51,14 @@ void initialize() {
   ///////////////////////////////////////////////////
   //SetAllPotential to zero and permittivity to one//
   ///////////////////////////////////////////////////
-  for (int i = 0; i < nx; ++i) {
+  /*for (int i = 0; i < nx; ++i) {
     for (int j = 0; j < ny; ++j) {
       for (int k = 0; k < nz; ++k) {
 	epsilon[i][j][k] = 1.0; 
 	V[i][j][k] = 0.;
       }
     }
-  }
+    }*/
 
   std::cout << "initialize:: SetPlatePotentials" << std::endl;
   ///////////////////////////////////////////////////
@@ -69,17 +66,10 @@ void initialize() {
   ///////////////////////////////////////////////////
   for (int i = 0; i < nx; i++) {
     for (int j = 0; j < ny; j++) {
-      V[i][j][0] = V1-3750;
-      if(sqrt(pow(i - cx, 2) + pow(j - cy, 2)) > cx-5 && sqrt(pow(i - cx, 2) + pow(j - cy, 2)) < cx-5+ting_thxy){
-	
-	for(int k=0;k<ring_thz;k++){
-	  V[i][j][ring1+k] = V1-2500;
-	  V[i][j][ring2+k] = V1-1250;
-	}
-      }
+      V[i][j][0] = V1-500;
       V[i][j][Plate1Position] = V1;
       V[i][j][Plate2Position] = V2;
-      V[i][j][nz-1] = 10;
+      V[i][j][nz-1] = 50;
     }
   }
   
@@ -104,12 +94,6 @@ void initialize() {
       epsilon[i][j][Plate2Position] = epsilon_copper;
       epsilon[i][j][nz-1] = epsilon_copper;
       epsilon[i][j][0]=epsilon_copper;
-      for (int k=0;k<ring_thz;k++) {
-	if(sqrt(pow(i - cx, 2) + pow(j - cy, 2)) > cx-5 && sqrt(pow(i - cx, 2) + pow(j - cy, 2)) < cx-5+ting_thxy){
-	  epsilon[i][j][ring1+k] = epsilon_copper;
-	  epsilon[i][j][ring2+k] = epsilon_copper;
-	}
-      }
     }
   }
     
@@ -118,8 +102,8 @@ void initialize() {
   /////////////////////////////////////////////////// 
   // Define other holes in the Teflon layer (vacuum region)
   /////////////////////////////////////////////////// 
-  for(int l=-2;l<=2;l++){
-    for(int m=-2;m<=2;m++){
+  for(int l=-1;l<=1;l++){
+    for(int m=-1;m<=1;m++){
       for (int i = 0; i < nx; i++) {
 	for (int j = 0; j < ny; j++) {
 	  if (sqrt(pow(i - cx + l*hole_pitch, 2) + pow(j - cy+ m*hole_pitch, 2)) < hole_radius) {
@@ -306,7 +290,7 @@ void solveLaplaceEquation()
   
   int iter = 0;
   double maxDiff = 0.0;
-  
+
   // Iterative relaxation loop
   do {
     maxDiff = 0.0;
@@ -315,8 +299,8 @@ void solveLaplaceEquation()
       for (int j = 1; j < ny - 1; ++j) {
 	for (int k = 1; k < nz - 1; ++k) {
 	  // Skip fixed-potential copper points.
-	  if (epsilon[i][j][k] == epsilon_copper)
-	    continue;
+
+	  if (epsilon[i][j][k] == epsilon_copper) continue;
 	  
 	  // Weighted contributions from the six neighbors.
 	  // Note: Adjust weighting if needed for your discretization.
@@ -362,7 +346,7 @@ void solveLaplaceEquation()
     
     iter++;
     // Optionally, print iteration progress
-    if (iter%50==0) std::cout << "Iteration " << iter << ", max difference = " << maxDiff << std::endl;
+    std::cout << "Iteration " << iter << ", max difference = " << maxDiff << std::endl;
   } while (maxDiff > tolerance && iter < max_iterations);
   
   // Clean up temporary array
@@ -381,7 +365,57 @@ void solveLaplaceEquation()
 
 
 
+void solveLaplaceSOR()
+{
+    // Over-relaxation parameter, typically 1 < omega < 2. Adjust for optimal performance.
+    double omega = 1.7;
+    int iter = 0;
+    double max_diff;
 
+    do {
+      max_diff = 0.0;
+      // Loop over interior points. Adjust if your boundaries need special handling.
+      for (int k = 1; k < nz - 1; ++k) {   // Move k-loop to outermost
+	for (int j = 1; j < ny - 1; ++j) {
+	  for (int i = 1; i < nx - 1; ++i) {
+	    // Skip fixed copper points.
+	    if (std::abs(epsilon[i][j][k] - epsilon_copper) < 1e-6)  continue;
+            
+	    // Calculate weighted contributions from the six neighbors.
+	    // The weighting uses the epsilon of each neighbor.
+	    double weightSum = 
+	      epsilon[i+1][j][k] + epsilon[i-1][j][k] +
+	      epsilon[i][j+1][k] + epsilon[i][j-1][k] +
+	      epsilon[i][j][k+1] + epsilon[i][j][k-1];
+	    
+	    double neighborSum = 
+	      epsilon[i+1][j][k] * V[i+1][j][k] +
+	      epsilon[i-1][j][k] * V[i-1][j][k] +
+	      epsilon[i][j+1][k] * V[i][j+1][k] +
+	      epsilon[i][j-1][k] * V[i][j-1][k] +
+	      epsilon[i][j][k+1] * V[i][j][k+1] +
+	      epsilon[i][j][k-1] * V[i][j][k-1];
+	    
+	    // Compute the new potential value from the weighted average.
+	    double newV = neighborSum / weightSum;
+	    double diff = newV - V[i][j][k];
+            
+	    // Update using SOR.
+	    V[i][j][k] += omega * diff;
+            
+	    // Track the maximum change over the grid.
+	    max_diff = std::max(max_diff, std::fabs(omega * diff));
+	  }
+	}
+      }
+      
+      iter++;
+      // Optionally, output iteration status:
+      std::cout << "Iteration " << iter << ", max difference = " << max_diff << std::endl;
+    } while (max_diff > tolerance && iter < max_iterations);
+    
+    std::cout << "SOR converged in " << iter << " iterations with max diff " << max_diff << std::endl;
+}
 
 
 
@@ -426,16 +460,18 @@ void visualizeElectricFieldXZProjection() {
     int arrow_count = 0;
     std::cout << "visualizeElectricFieldXZProjection::Calculating electric fields" << std::endl;
 
+    double Ex,Ey,Ez;
+    
     for (int i = 2; i < nx - 2; i += 1) {
       for (int j = 2; j < ny - 2; j += 1) {
 	for (int k = 2; k < nz - 2; k += 1) {
 	  
 	  // Compute electric field components using fourth-order differences
-	  Ex[i][j][k] = -(-V[i+2][j][k] + 8.0 * V[i+1][j][k] - 8.0 * V[i-1][j][k] + V[i-2][j][k]) / (12.0 * grid_spacing);
-	  Ey[i][j][k] = -(-V[i][j+2][k] + 8.0 * V[i][j+1][k] - 8.0 * V[i][j-1][k] + V[i][j-2][k]) / (12.0 * grid_spacing);
-	  Ez[i][j][k] = -(-V[i][j][k+2] + 8.0 * V[i][j][k+1] - 8.0 * V[i][j][k-1] + V[i][j][k-2]) / (12.0 * grid_spacing);
+	  Ex = -(-V[i+2][j][k] + 8.0 * V[i+1][j][k] - 8.0 * V[i-1][j][k] + V[i-2][j][k]) / (12.0 * grid_spacing);
+	  Ey = -(-V[i][j+2][k] + 8.0 * V[i][j+1][k] - 8.0 * V[i][j-1][k] + V[i][j-2][k]) / (12.0 * grid_spacing);
+	  Ez = -(-V[i][j][k+2] + 8.0 * V[i][j][k+1] - 8.0 * V[i][j][k-1] + V[i][j][k-2]) / (12.0 * grid_spacing);
 	  
-	  double magnitude = sqrt(Ex[i][j][k] * Ex[i][j][k] + Ey[i][j][k] * Ey[i][j][k] + Ez[i][j][k] * Ez[i][j][k]);
+	  double magnitude = sqrt(Ex * Ex + Ey * Ey + Ez * Ez);
 	  
 	  if(j == ny/2){
 	    fmagn->SetBinContent(i,k,magnitude);
@@ -444,8 +480,8 @@ void visualizeElectricFieldXZProjection() {
 	      // Project the arrow onto the xz-plane
 	      double x_start = i;
 	      double z_start = k;
-	      double x_end = x_start + Ex[i][j][k]/magnitude;
-	      double z_end = z_start + Ez[i][j][k]/magnitude;
+	      double x_end = x_start + Ex/magnitude;
+	      double z_end = z_start + Ez/magnitude;
 	      
 	      // Add the starting point to the TGraph
 	      points->SetPoint(points->GetN(), x_start, z_start);
@@ -482,7 +518,8 @@ void writeElectricFieldToFile(const std::string& filename) {
     std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
     return;
   }
-  
+
+  /*
   // Loop over all i, j, k (excluding boundaries)
   for (int i = 1; i < nx - 1; ++i) {
     for (int j = 1; j < ny - 1; ++j) {
@@ -498,7 +535,8 @@ void writeElectricFieldToFile(const std::string& filename) {
       }
     }
   }
-  
+  */
+
   // Close the file
   outfile.close();
   std::cout << "Electric field data written to " << filename << std::endl;
@@ -536,6 +574,7 @@ void visualizePermittivity(TString name,TString name_his) {
             }
         }
     }
+
     h4->SetMinimum(1);
     h4->SetMaximum(3);
     h4->Draw("COLZ");
@@ -553,10 +592,11 @@ int main(int argc, char** argv){
   //visualizePermittivity("Permittivity","Permittivity_Plot");
   //writeMeshToFile("OutFileField/TeflonMesh.txt");
   //solveLaplace();
-  solveLaplaceEquation();
+  //solveLaplaceEquation();
+  solveLaplaceSOR();
   //visualizePotential("Final_Potential","Plot_Final_Potential");
   //visualizePotential();
-  visualizeElectricFieldXZProjection();
+  //visualizeElectricFieldXZProjection();
   writeElectricFieldToFile("OutFileField/field_test.txt");
   theApp.Run();
 }

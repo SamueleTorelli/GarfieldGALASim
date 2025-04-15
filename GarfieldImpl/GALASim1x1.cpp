@@ -27,26 +27,46 @@
 
 using namespace Garfield;
 
-std::ofstream outFile; // Global file pointer
+std::ofstream outPhotonFile; // Global file pointer
+std::ofstream outElFile; // Global file pointer
 
 int ev;
 
-void openFile() {
-    outFile.open("example.txt", std::ios::out | std::ios::app); // Open for writing, append mode
-    if (!outFile) {
+void openPhotonFile() {
+    outPhotonFile.open("outfile/PhotonFile.txt", std::ios::out | std::ios::app); // Open for writing, append mode
+    if (!outPhotonFile) {
         std::cerr << "Error opening file!" << std::endl;
     }
 }
 
-void writeToFile(int ev,double x, double y, double z, double t) {
+void writeToPhotonFile(int ev,double x, double y, double z, double t) {
 
-  outFile << ev << " " << x << " " << y << " " << z << " " << t << "\n" ;
+  outPhotonFile << ev << " " << x << " " << y << " " << z << " " << t << "\n" ;
    
 }
 
-void closeFile() {
-    if (outFile.is_open()) {
-        outFile.close();
+void closePhotonFile() {
+    if (outPhotonFile.is_open()) {
+        outPhotonFile.close();
+    }
+}
+
+void openElFile() {
+    outElFile.open("outfile/ElFile.txt", std::ios::out | std::ios::app); // Open for writing, append mode
+    if (!outElFile) {
+        std::cerr << "Error opening file!" << std::endl;
+    }
+}
+
+void writeToElFile(int ev,double x, double y, double z) {
+
+  outElFile << ev << " " << x << " " << y << " " << z <<  "\n" ;
+   
+}
+
+void closeElFile() {
+    if (outElFile.is_open()) {
+        outElFile.close();
     }
 }
 
@@ -60,16 +80,18 @@ void userTracking(double x, double y, double z, double t,
     // Skip inelastic collisions that are not excitations.
     if (type != 4) return; //save tracks ONLY of	inelastic collisions that have produced	excitations.
     
-    //std::cout<< ev << " " << x << " " << y << " " << z << " " << t << std::endl;
-    writeToFile(ev,x,y,z,t);
+    std::cout<< ev << " " << x << " " << y << " " << z << " " << t << std::endl;
+    writeToPhotonFile(ev,x,y,z,t);
 }
 
 
 
 int main() {
 
+  TApplication app("app", nullptr, nullptr);
+
   MediumMagboltz gas;
-  gas.LoadGasFile("/scratch/torellis/GALAD/GarfieldGALASim/GasFile/gases/xe_5bar.gas");
+  gas.LoadGasFile("/Users/samuele/Documents/Postdoc/GALA/GarfieldGALADSim/GasFile/gases/xe_5bar.gas");
   gas.SetTemperature(293.15); // 20°C
   gas.SetPressure(760.*5);      // 1 atm
   gas.Initialise(true); // Enable Penning transfer
@@ -87,10 +109,8 @@ int main() {
   double xminw, yminw, zminw, xmaxw, ymaxw, zmaxw;
   double xmin, ymin, zmin, xmax, ymax, zmax;
   double hole_rad, pitch;
-
-  bool print = false;
   
-  std::ifstream infile("/scratch/torellis/GALAD/GarfieldGALASim_Cust/OutFileField/TeflonMesh.txt"); // Change this to your filename
+  std::ifstream infile("/Users/samuele/Documents/Postdoc/GALA/EFSimulation/OutFileField/TeflonMesh.txt"); // Change this to your filename
   if (!infile.is_open()) {
     std::cerr << "Error: Could not open file!" << std::endl;
     return 1;
@@ -112,7 +132,7 @@ int main() {
 
   zmin = zmin;
   zmax = zmax;
-  
+
   // Close the file
   infile.close();
   std::cout << "Gas box: (" << xminw << ", " << yminw << ", " << zminw << ") to ("
@@ -132,14 +152,14 @@ int main() {
   // Create 9 cylindrical holes in the Teflon box
   std::vector<std::pair<double, double>> holePositions = {
     {0.0, 0.0},          // Center
-    {-pitch, 0.0},       // Left
+    /*{-pitch, 0.0},       // Left
     {pitch, 0.0},        // Right
     {0.0, pitch},        // Top
     {0.0, -pitch},       // Bottom
     {-pitch, pitch},     // Top-left
     {pitch, pitch},     // Top-right
     {-pitch, -pitch},   // Bottom-left
-    {pitch, -pitch}     // Bottom-right
+    {pitch, -pitch}     // Bottom-right*/
   };
 
   for (const auto& pos : holePositions) {
@@ -171,7 +191,7 @@ int main() {
   
   // Create the field component
   ComponentGrid* field = new ComponentGrid();
-  field->LoadElectricField("/scratch/torellis/GALAD/GarfieldGALASim_Cust/OutFileField/EFieldFile_lowtol.txt", "XYZ", false, false);
+  field->LoadElectricField("/Users/samuele/Documents/Postdoc/GALA/EFSimulation/OutFileField/field_testXYZ.txt", "XYZ", false, false);
   field->SetGeometry(&geometry);
   field->EnableCustomMediumReturn();
   field->Print();
@@ -182,27 +202,29 @@ int main() {
   sensor.AddComponent(field);
   sensor.EnableDebugging();
   // Set the sensor region to the amplification volume
-  sensor.SetArea(-0.4, -0.4, -0.3,
-		  0.4, 0.4, 0.5);
+  sensor.SetArea(-0.26, -0.26, -0.5,
+		  0.26, 0.26, 0.5);
 
-  if(print){
-      new TCanvas();
-      TH2D* h = new TH2D("EF","EF",int((xmaxw-xminw)/0.01),xminw,xmaxw,int((zmaxw-zminw)/0.01),zminw,zmaxw);
+
+  new TCanvas();
+  TH2D* h = new TH2D("EF","EF",int((xmaxw-xminw)/0.01),xminw,xmaxw,int((zmaxw-zminw)/0.01),zminw,zmaxw);
+  
+  for(double x =  xminw+0.01; x <xmaxw-0.01; x += 0.001){
+    for (double z = zminw; z <zmaxw; z += 0.001) {
+      double ex, ey, ez;
       
-      for(double x =  xminw+0.01; x <xmaxw-0.01; x += 0.001){
-	  for (double z = zminw; z <zmaxw; z += 0.001) {
-	      double ex, ey, ez;
-	      
-	      ex = field->ElectricField(x, 0.0, z)[0];
-	      ey = field->ElectricField(x, 0.0, z)[1];
-	      ez = field->ElectricField(x, 0.0, z)[2];
-	      
-	      double magn = sqrt(ex*ex+ey*ey+ez*ez);
-	      //if(z>0.2 && z<0.4 && magn < 1) std::cout <<"Magn 0 at (x,z) = " << x << " " << z << std::endl;
-	      h->SetBinContent(h->GetXaxis()->FindBin(x),h->GetYaxis()->FindBin(z),magn);
-	  }
+      std::array<double, 3> field_point = field->ElectricField(x, 0.0, z);
+      
+      if(field_point[0]){
+	ex = field_point[0];
+	ey = field_point[1];
+	ez = field_point[2];
+	
+	double magn = sqrt(ex*ex+ey*ey+ez*ez);
+	//if(z>0.2 && z<0.4 && magn < 1) std::cout <<"Magn 0 at (x,z) = " << x << " " << z << std::endl;
+	h->SetBinContent(h->GetXaxis()->FindBin(x),h->GetYaxis()->FindBin(z),magn);
       }
-      h->Draw("COLZ");
+    }
   }
   
   /*
@@ -213,9 +235,9 @@ int main() {
     } else {
       std::cout << "Warning: Medium driftable? " << m->GetName() << " " << m->IsDriftable() << std::endl;
     } 
-    }
-  */
+    }*/
   
+  h->Draw("COLZ");
   
   // Create an avalanche microscopic object for electron tracking
   AvalancheMicroscopic avalanche;
@@ -228,49 +250,48 @@ int main() {
   //avalanche.SetUserHandleStep(userHandleStep);
   // Set up visualization of the electron drift
 
-  avalanche.SetElectronTransportCut(0.00001);
+  ViewDrift viewDrift;
+  avalanche.EnablePlotting(&viewDrift);
+  avalanche.EnableExcitationMarkers(true);
+  avalanche.SetElectronTransportCut(0.000001);
   avalanche.SetUserHandleInelastic(userTracking);
 
   bool debug = false;
-
+  
   if(!debug){
-    openFile();
-
-    std::ofstream outFile_met("metadata.txt", std::ios::out | std::ios::app);
-    outFile_met <<"# ev x0 y0 z0 xf yf zf \n";
-     
+    openPhotonFile();
+    openElFile();
+    
     std::cout << "Drifting medium: "<< gas.IsDriftable() << " " << teflon.IsDriftable() << "\n"; 
     
-    for(int i=0; i<10000; i++){
-	
-      ev=i;
-      
+    for(int i=0; i<30; i++){
       // Set the initial position of the electron (in cm)
       double x0 = rand()/(double)RAND_MAX*0.5-0.25;
       double y0 = rand()/(double)RAND_MAX*0.5-0.25;
-      double z0 = -0.25; // Start at the bottom of the volume
+      double z0 = -0.4; // Start at the bottom of the volume
       std::cout << i <<" e- starting at " << x0 << " " << y0 << " " << z0 << std::endl;
       double t0 = 0.0; // Initial time (in ns)
       double e0 = 0.01; // Initial energy of the electron (in eV)
+      ev=i;
       
       // Simulate the electron drift within the amplification volume
+      writeToElFile(ev,x0,y0,z0);
+	
       avalanche.DriftElectron(x0, y0, z0, t0, e0);
-      
       AnalyseAval(ev,avalanche,field);
       
-      double x1, y1, z1, t1, e1;
-      double x2, y2, z2, t2, e2;
-      int status;
-      
-      avalanche.GetElectronEndpoint(0, x1, y1, z1, t1, e1, x2, y2, z2, t2, e2, status);
-      
-      outFile_met << ev << " " << x0 << " " << y0 << " " << z0 << " " << x2  << " "	<< y2  << " " << z2 << "\n";
-      
     }
-    
-    closeFile();
-    outFile_met.close();
+
+    closeElFile();
+    closePhotonFile();
   }
-  
+  viewDrift.Plot();
+
+  // Visualize the geometry
+  ViewGeometry view;
+  view.SetGeometry(&geometry);
+  view.Plot();
+    
+  app.Run();
   return 0;
 }

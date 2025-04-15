@@ -250,7 +250,7 @@ int main() {
       // Simulate the electron drift within the amplification volume
       avalanche.DriftElectron(x0, y0, z0, t0, e0);
       ev=i;
-      AnalyseAval(avalanche,field);
+      AnalyseAval(ev,avalanche,field);
       
     }
   
