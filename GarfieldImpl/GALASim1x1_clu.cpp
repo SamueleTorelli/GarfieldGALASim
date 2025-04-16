@@ -58,9 +58,9 @@ void openElFile() {
     }
 }
 
-void writeToElFile(int ev,double x, double y, double z) {
+void writeToElFile(int ev,double x, double y, double z, struct EndPoint Ep) {
 
-  outElFile << ev << " " << x << " " << y << " " << z <<  "\n" ;
+  outElFile << ev << " " << x << " " << y << " " << z <<  " " << Ep.x << " " <<Ep.y << " " << Ep.z  <<"\n" ;
    
 }
 
@@ -219,6 +219,8 @@ int main() {
   avalanche.SetUserHandleInelastic(userTracking);
 
   bool debug = false;
+
+  EndPoint Ep;    
   
   if(!debug){
     openPhotonFile();
@@ -236,11 +238,11 @@ int main() {
       double e0 = 0.01; // Initial energy of the electron (in eV)
       ev=i;
       
-      // Simulate the electron drift within the amplification volume
-      writeToElFile(ev,x0,y0,z0);
-	
       avalanche.DriftElectron(x0, y0, z0, t0, e0);
-      AnalyseAval(ev,avalanche,field);
+      Ep=AnalyseAval(ev,avalanche,field);
+
+      // Simulate the electron drift within the amplification volume
+      writeToElFile(ev,x0,y0,z0,Ep);	
       
     }
 

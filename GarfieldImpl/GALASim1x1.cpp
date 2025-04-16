@@ -58,9 +58,9 @@ void openElFile() {
     }
 }
 
-void writeToElFile(int ev,double x, double y, double z) {
+void writeToElFile(int ev,double x, double y, double z, struct EndPoint Ep) {
 
-  outElFile << ev << " " << x << " " << y << " " << z <<  "\n" ;
+  outElFile << ev << " " << x << " " << y << " " << z <<  " " << Ep.x << " " <<Ep.y << " " << Ep.z  <<"\n" ;
    
 }
 
@@ -167,7 +167,7 @@ int main() {
     double y = pos.second;
     double z = teflonCenterZ; // Center of the hole in z
     double height = zmax - zmin; // Height of the hole
-
+    
     auto hole = new Garfield::SolidTube(x, y, z, hole_rad, height/2+0.02);
     geometry.AddSolid(hole, &gas); // Assign gas medium to the hole
   }
@@ -257,6 +257,8 @@ int main() {
   avalanche.SetUserHandleInelastic(userTracking);
 
   bool debug = false;
+
+  EndPoint Ep;
   
   if(!debug){
     openPhotonFile();
@@ -275,16 +277,19 @@ int main() {
       ev=i;
       
       // Simulate the electron drift within the amplification volume
-      writeToElFile(ev,x0,y0,z0);
-	
+      	
       avalanche.DriftElectron(x0, y0, z0, t0, e0);
-      AnalyseAval(ev,avalanche,field);
+
+      Ep=AnalyseAval(ev,avalanche,field);
+
+      writeToElFile(ev,x0,y0,z0,Ep);
       
     }
 
     closeElFile();
     closePhotonFile();
   }
+
   viewDrift.Plot();
 
   // Visualize the geometry
